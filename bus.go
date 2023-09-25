@@ -78,8 +78,9 @@ func (b *Bus) findHandlerIdx(topic string, handler Handler) int {
 	return -1
 }
 
-func (b *Bus) Broadcast(topic string, data Data) {
+func (b *Bus) Broadcast(ctx context.Context, topic string, data Data) {
 	b.ch <- broadcastData{
+		ctx:   ctx,
 		topic: topic,
 		data:  data,
 		async: false,
