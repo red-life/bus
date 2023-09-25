@@ -27,7 +27,10 @@ type broadcastData struct {
 
 func NewBus(workers uint) *Bus {
 	bus := &Bus{
-		lock: sync.RWMutex{},
+		lock:     sync.RWMutex{},
+		handlers: map[string][]Handler{},
+		ch:       make(chan broadcastData, 0),
+		wg:       sync.WaitGroup{},
 	}
 	for i := 0; i < int(workers); i++ {
 		go bus.broadcaster()
@@ -39,6 +42,7 @@ type Bus struct {
 	lock     sync.RWMutex
 	handlers map[string][]Handler
 	ch       chan broadcastData
+	wg       sync.WaitGroup
 }
 
 func (b *Bus) RegisterHandler(topic string, handler Handler) error {
@@ -101,6 +105,10 @@ func (b *Bus) GetHandlers(topic string) ([]Handler, error) {
 	return handlers, nil
 }
 
+func (b *Bus) WaitAsync() {
+	b.wg.Wait()
+}
+
 func (b *Bus) broadcaster() {
 	for {
 		select {
@@ -113,7 +121,11 @@ func (b *Bus) broadcaster() {
 			}
 			for _, h := range handlers {
 				if broadcastedData.async {
-					go h.Handle(broadcastedData.ctx, broadcastedData.data)
+					b.wg.Add(1)
+					go func() {
+						h.Handle(broadcastedData.ctx, broadcastedData.data)
+						b.wg.Done()
+					}()
 				} else {
 					h.Handle(broadcastedData.ctx, broadcastedData.data)
 				}
