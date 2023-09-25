@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrHandlerNotFound = errors.New("handler not found")
+	ErrTopicNotFound   = errors.New("topic not found")
 )
 
 type Data any
@@ -54,7 +55,7 @@ func (b *Bus) UnregisterHandler(topic string, handler Handler) error {
 		return ErrHandlerNotFound
 	}
 	b.handlers[topic] = append(b.handlers[topic][:idx], b.handlers[topic][idx+1:]...)
-	b.lock.Unlock() // Not using defer due to performance issues
+	b.lock.Unlock()
 	return nil
 }
 
@@ -88,6 +89,16 @@ func (b *Bus) BroadcastAsync(ctx context.Context, topic string, data Data) {
 		data:  data,
 		async: true,
 	}
+}
+
+func (b *Bus) GetHandlers(topic string) ([]Handler, error) {
+	b.lock.RLock()
+	handlers, ok := b.handlers[topic]
+	if !ok {
+		return nil, ErrTopicNotFound
+	}
+	b.lock.RUnlock()
+	return handlers, nil
 }
 
 func (b *Bus) broadcaster() {
