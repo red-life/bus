@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	ErrHandlerNotFound = errors.New("handler not found")
-	ErrTopicNotFound   = errors.New("topic not found")
+	ErrHandlerNotFound  = errors.New("handler not found")
+	ErrTopicNotFound    = errors.New("topic not found")
+	ErrDuplicateHandler = errors.New("duplicate handler")
 )
 
 type Data any
@@ -47,6 +48,9 @@ type Bus struct {
 
 func (b *Bus) RegisterHandler(topic string, handler Handler) error {
 	b.lock.Lock()
+	if idx := b.findHandlerIdx(topic, handler); idx != -1 {
+		return ErrDuplicateHandler
+	}
 	b.handlers[topic] = append(b.handlers[topic], handler)
 	b.lock.Unlock() // Not using defer due to performance issues
 	return nil
