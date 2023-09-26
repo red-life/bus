@@ -7,12 +7,6 @@ import (
 	"sync"
 )
 
-var (
-	ErrHandlerNotFound  = errors.New("handler not found")
-	ErrTopicNotFound    = errors.New("topic not found")
-	ErrDuplicateHandler = errors.New("duplicate handler")
-)
-
 type Handler[T any] interface {
 	Handle(context.Context, T)
 }

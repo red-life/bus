@@ -16,10 +16,6 @@ type ICommandBus interface {
 	PublishAsync(ctx context.Context, topic string, command Command)
 }
 
-var (
-	ErrTopicAlreadySubscribed = errors.New("this topic already been subscribed")
-)
-
 func NewCommandBus(bus *Bus[Command]) ICommandBus {
 	return &CommandBus{
 		bus: bus,
