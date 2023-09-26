@@ -5,8 +5,8 @@ import (
 	"errors"
 )
 
-type CommandHandler Handler
-type Command Data
+type Command any
+type CommandHandler Handler[Command]
 
 type ICommandBus interface {
 	Subscribe(topic string, handler CommandHandler) error
@@ -20,14 +20,14 @@ var (
 	ErrTopicAlreadySubscribed = errors.New("this topic already been subscribed")
 )
 
-func NewCommandBus(bus *Bus) ICommandBus {
+func NewCommandBus(bus *Bus[Command]) ICommandBus {
 	return &CommandBus{
 		bus: bus,
 	}
 }
 
 type CommandBus struct {
-	bus *Bus
+	bus *Bus[Command]
 }
 
 func (c CommandBus) Subscribe(topic string, handler CommandHandler) error {

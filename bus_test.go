@@ -11,15 +11,16 @@ type HandlerMock struct {
 	lock sync.Mutex
 }
 
-func (h *HandlerMock) Handle(_ context.Context, _ Data) {
+func (h *HandlerMock) Handle(ctx context.Context, hi any) {
 	h.lock.Lock()
 	h.I++
 	h.lock.Unlock()
 }
 
 func TestBus_GetHandlers(t *testing.T) {
-	b := NewBus()
-	b.RegisterHandler("topic", &HandlerMock{})
+	b := NewBus[any]()
+	h := &HandlerMock{}
+	b.RegisterHandler("topic", h)
 	if handlers, err := b.GetHandlers("topic"); err != nil || len(handlers) != 1 {
 		t.Log("Expected to be registered only one handler")
 		t.Fail()
@@ -27,7 +28,7 @@ func TestBus_GetHandlers(t *testing.T) {
 }
 
 func TestBus_RegisterHandler(t *testing.T) {
-	b := NewBus()
+	b := NewBus[any]()
 	b.RegisterHandler("topic1", &HandlerMock{})
 	b.RegisterHandler("topic1", &HandlerMock{})
 	if handlers, err := b.GetHandlers("topic1"); err != nil || len(handlers) != 2 {
@@ -48,7 +49,7 @@ func TestBus_RegisterHandler(t *testing.T) {
 }
 
 func TestBus_UnregisterHandler(t *testing.T) {
-	b := NewBus()
+	b := NewBus[any]()
 	handler := &HandlerMock{}
 	b.RegisterHandler("topic1", handler)
 	if err := b.UnregisterHandler("topic1", handler); err != nil {
@@ -62,7 +63,7 @@ func TestBus_UnregisterHandler(t *testing.T) {
 }
 
 func TestBus_Broadcast(t *testing.T) {
-	b := NewBus()
+	b := NewBus[any]()
 	handler := &HandlerMock{I: 0, lock: sync.Mutex{}}
 	b.RegisterHandler("topic", handler)
 	b.Broadcast(context.Background(), "topic", struct{}{})
@@ -73,7 +74,7 @@ func TestBus_Broadcast(t *testing.T) {
 }
 
 func TestBus_BroadcastAsync(t *testing.T) {
-	b := NewBus()
+	b := NewBus[any]()
 	handler := &HandlerMock{I: 0, lock: sync.Mutex{}}
 	b.RegisterHandler("topic", handler)
 	for i := 0; i < 100; i++ {

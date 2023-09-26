@@ -2,8 +2,10 @@ package bus
 
 import "context"
 
-type Event Data
-type EventHandler Handler
+type Event any
+type EventHandler interface {
+	Handle(context.Context, Event)
+}
 
 type IEventBus interface {
 	Subscribe(topic string, handler EventHandler) error
@@ -13,14 +15,14 @@ type IEventBus interface {
 	PublishAsync(ctx context.Context, topic string, event Event)
 }
 
-func NewEventBus(bus *Bus) IEventBus {
+func NewEventBus(bus *Bus[Event]) IEventBus {
 	return &EventBus{
 		bus: bus,
 	}
 }
 
 type EventBus struct {
-	bus *Bus
+	bus *Bus[Event]
 }
 
 func (e EventBus) Subscribe(topic string, handler EventHandler) error {
