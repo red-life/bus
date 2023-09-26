@@ -26,15 +26,12 @@ type broadcastData struct {
 	async bool
 }
 
-func NewBus(workers uint) *Bus {
+func NewBus() *Bus {
 	bus := &Bus{
 		lock:     sync.RWMutex{},
 		handlers: map[string][]Handler{},
-		ch:       make(chan broadcastData, 0),
+		ch:       make(chan broadcastData),
 		wg:       sync.WaitGroup{},
-	}
-	for i := 0; i < int(workers); i++ {
-		go bus.broadcaster()
 	}
 	return bus
 }
@@ -48,65 +45,65 @@ type Bus struct {
 
 func (b *Bus) RegisterHandler(topic string, handler Handler) error {
 	b.lock.Lock()
-	if idx := b.findHandlerIdx(topic, handler); idx != -1 {
+	defer b.lock.Unlock()
+	if _, err := b.findHandlerIdx(topic, handler); !errors.Is(err, ErrHandlerNotFound) && !errors.Is(err, ErrTopicNotFound) {
 		return ErrDuplicateHandler
 	}
 	b.handlers[topic] = append(b.handlers[topic], handler)
-	b.lock.Unlock() // Not using defer due to performance issues
 	return nil
 }
 
 func (b *Bus) UnregisterHandler(topic string, handler Handler) error {
 	b.lock.Lock()
-	idx := b.findHandlerIdx(topic, handler)
-	if idx == -1 {
-		return ErrHandlerNotFound
+	defer b.lock.Unlock()
+	idx, err := b.findHandlerIdx(topic, handler)
+	if err != nil {
+		return err
 	}
 	b.handlers[topic] = append(b.handlers[topic][:idx], b.handlers[topic][idx+1:]...)
-	b.lock.Unlock()
 	return nil
 }
 
-func (b *Bus) findHandlerIdx(topic string, handler Handler) int {
+func (b *Bus) findHandlerIdx(topic string, handler Handler) (int, error) {
 	handlers, ok := b.handlers[topic]
 	if !ok {
-		return -1
+		return 0, ErrTopicNotFound
 	}
 	value := reflect.ValueOf(handler)
 	for i, h := range handlers {
 		if reflect.ValueOf(h).Type() == value.Type() &&
 			reflect.ValueOf(h).Pointer() == value.Pointer() {
-			return i
+			return i, nil
 		}
 	}
-	return -1
+	return 0, ErrHandlerNotFound
 }
 
 func (b *Bus) Broadcast(ctx context.Context, topic string, data Data) {
-	b.ch <- broadcastData{
+	b.doBroadcast(broadcastData{
 		ctx:   ctx,
 		topic: topic,
 		data:  data,
 		async: false,
-	}
+	})
 }
 
 func (b *Bus) BroadcastAsync(ctx context.Context, topic string, data Data) {
-	b.ch <- broadcastData{
+	b.doBroadcast(broadcastData{
 		ctx:   ctx,
 		topic: topic,
 		data:  data,
 		async: true,
-	}
+	})
 }
 
 func (b *Bus) GetHandlers(topic string) ([]Handler, error) {
 	b.lock.RLock()
+	defer b.lock.RUnlock()
 	handlers, ok := b.handlers[topic]
 	if !ok {
 		return nil, ErrTopicNotFound
 	}
-	b.lock.RUnlock()
 	return handlers, nil
 }
 
@@ -114,27 +111,20 @@ func (b *Bus) WaitAsync() {
 	b.wg.Wait()
 }
 
-func (b *Bus) broadcaster() {
-	for {
-		select {
-		case broadcastedData := <-b.ch:
-			b.lock.RLock()
-			handlers, ok := b.handlers[broadcastedData.topic]
-			b.lock.RUnlock()
-			if !ok {
-				continue
-			}
-			for _, h := range handlers {
-				if broadcastedData.async {
-					go func() {
-						b.wg.Add(1)
-						h.Handle(broadcastedData.ctx, broadcastedData.data)
-						b.wg.Done()
-					}()
-				} else {
-					h.Handle(broadcastedData.ctx, broadcastedData.data)
-				}
-			}
+func (b *Bus) doBroadcast(data broadcastData) {
+	handlers, err := b.GetHandlers(data.topic)
+	if err != nil {
+		return
+	}
+	for _, h := range handlers {
+		if data.async {
+			b.wg.Add(1)
+			go func() {
+				h.Handle(data.ctx, data.data)
+				b.wg.Done()
+			}()
+		} else {
+			h.Handle(data.ctx, data.data)
 		}
 	}
 }

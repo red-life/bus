@@ -36,7 +36,7 @@ func (e EventBus) Subscribers(topic string) ([]EventHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	eventHandlers := make([]EventHandler, len(handlers))
+	eventHandlers := make([]EventHandler, 0, len(handlers))
 	for _, h := range handlers {
 		eventHandlers = append(eventHandlers, EventHandler(h))
 	}
