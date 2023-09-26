@@ -2,7 +2,7 @@ package bus
 
 import "errors"
 
-// Bus errors
+// Bus errors (CommandBus & EventBus can also return these errors)
 var (
 	ErrHandlerNotFound  = errors.New("handler not found")
 	ErrTopicNotFound    = errors.New("topic not found")
