@@ -126,8 +126,8 @@ func (b *Bus) broadcaster() {
 			}
 			for _, h := range handlers {
 				if broadcastedData.async {
-					b.wg.Add(1)
 					go func() {
+						b.wg.Add(1)
 						h.Handle(broadcastedData.ctx, broadcastedData.data)
 						b.wg.Done()
 					}()
