@@ -8,10 +8,10 @@ Then, easily pass the `b` to `NewEventBus` to create an instance of EventBus
 eventBus := bus.NewEventBus(b)
 ```
 That's it. You have an Event Bus that you can easily publish and subscribe to different topics.\
-*`NewEventBus` returns an interface. You can see the available methods at `IEventBus` interface*
+*`NewEventBus` returns an interface. You can see the available methods at the `IEventBus` interface*
 
 ### Subscribing to a topic
-`Subscribe` method takes two arguments, the topic name and event handler. Handler is just an interface.
+The `Subscribe` method takes two arguments, the topic name and the event handler. The handler is just an interface.
 ```go
 type eventHandler struct {}
 func (eventHandler) Handle(ctx context.Context, event bus.Event) {
@@ -26,7 +26,7 @@ eventBus.Subscribe("myTopic", handler)
 There are two methods for publishing:
 - `Publish`
 - `PublishAsync`\
-The key difference between them is `PublishAsync` creates a goroutine foreach subscriber but `Publish` waits foreach subscriber to finish its handling of the event.
+The key difference between them is that `PublishAsync` creates a goroutine for each subscriber but `Publish` waits for each subscriber to finish its handling of the event.
 
 ```go
 type myEvent struct {
@@ -46,6 +46,6 @@ All errors that might be returned are available in [errors.go](../errors.go)
 
 ### Example
 You can the full example in [event_bus.go](../examples/event_bus.go)\
-Also you can run the example by running the command below:\
+Also, you can run the example by running the command below:\
 `go run examples/event_bus.go`
 
