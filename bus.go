@@ -72,21 +72,11 @@ func (b *Bus[T]) findHandlerIdx(topic string, handler Handler[T]) (int, error) {
 }
 
 func (b *Bus[T]) Broadcast(ctx context.Context, topic string, data T) {
-	b.doBroadcast(broadcastData[T]{
-		ctx:   ctx,
-		topic: topic,
-		data:  data,
-		async: false,
-	})
+	b.doBroadcast(ctx, topic, data, false)
 }
 
 func (b *Bus[T]) BroadcastAsync(ctx context.Context, topic string, data T) {
-	b.doBroadcast(broadcastData[T]{
-		ctx:   ctx,
-		topic: topic,
-		data:  data,
-		async: true,
-	})
+	b.doBroadcast(ctx, topic, data, true)
 }
 
 func (b *Bus[T]) GetHandlers(topic string) ([]Handler[T], error) {
@@ -103,20 +93,20 @@ func (b *Bus[T]) WaitAsync() {
 	b.wg.Wait()
 }
 
-func (b *Bus[T]) doBroadcast(data broadcastData[T]) {
-	handlers, err := b.GetHandlers(data.topic)
+func (b *Bus[T]) doBroadcast(ctx context.Context, topic string, data T, async bool) {
+	handlers, err := b.GetHandlers(topic)
 	if err != nil {
 		return
 	}
 	for _, h := range handlers {
-		if data.async {
+		if async {
 			b.wg.Add(1)
 			go func() {
-				h.Handle(data.ctx, data.data)
+				h.Handle(ctx, data)
 				b.wg.Done()
 			}()
 		} else {
-			h.Handle(data.ctx, data.data)
+			h.Handle(ctx, data)
 		}
 	}
 }
